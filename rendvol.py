@@ -43,7 +43,7 @@ def obtener_fecha_inicio(periodo):
         return hoy - timedelta(days=365)  # Default to 1 year if none selected
 
 # Configurar la aplicación Streamlit
-st.title('Rendimiento y Volatilidad Anualizada')
+st.title('Análisis de Rendimiento del Periodo y Volatilidad Anualizada con Recta de Regresión')
 
 # Entrada de los tickers (por defecto se incluyen los activos solicitados)
 activos = st.text_input('Ingresa los tickers de los activos separados por comas', 
@@ -69,46 +69,55 @@ if st.button('Analizar'):
     
     # Calcular rendimiento del periodo y volatilidad para cada activo
     for activo in activos_lista:
-        data_activo = datos[activo]
-        rendimiento, volatilidad = calcular_rendimiento_volatilidad(data_activo)
-        rendimiento_periodo.append(rendimiento)
-        volatilidad_anualizada.append(volatilidad)
+        data_activo = datos[activo].dropna()  # Eliminar valores NaN
+        if len(data_activo) > 1:  # Asegurar que haya suficientes datos
+            rendimiento, volatilidad = calcular_rendimiento_volatilidad(data_activo)
+            rendimiento_periodo.append(rendimiento)
+            volatilidad_anualizada.append(volatilidad)
+        else:
+            rendimiento_periodo.append(np.nan)  # Evitar problemas si no hay suficientes datos
+            volatilidad_anualizada.append(np.nan)
     
     # Crear un DataFrame con los resultados
     resultados = pd.DataFrame({
         'Activos': activos_lista,
         'Rendimiento del Periodo': rendimiento_periodo,
         'Volatilidad Anualizada': volatilidad_anualizada
-    })
+    }).dropna()  # Eliminar filas con NaN
     
     # Mostrar los resultados en la tabla
     st.write('Resultados del análisis:')
     st.dataframe(resultados)
     
-    # Calcular la recta de regresión
-    x = resultados['Volatilidad Anualizada']
-    y = resultados['Rendimiento del Periodo']
-    coef = np.polyfit(x, y, 1)
-    regresion_linea = np.poly1d(coef)
-    
-    # Crear el scatter plot con Plotly
-    fig = px.scatter(resultados, 
-                     x='Volatilidad Anualizada', 
-                     y='Rendimiento del Periodo',
-                     text='Activos',
-                     title=f'Rendimiento del Periodo vs. Volatilidad Anualizada ({periodo})',
-                     labels={'Volatilidad Anualizada': 'Volatilidad Anualizada', 
-                             'Rendimiento del Periodo': 'Rendimiento del Periodo'})
-    
-    # Agregar la recta de regresión al gráfico
-    fig.add_trace(go.Scatter(x=x, y=regresion_linea(x), 
-                             mode='lines', 
-                             name='Recta de Regresión',
-                             line=dict(color='red', dash='dash')))
-    
-    # Ajustar el tamaño del texto de las etiquetas
-    fig.update_traces(textposition='top center', marker=dict(size=12, opacity=0.8))
-    fig.update_layout(autosize=False, width=800, height=600)
-    
-    # Mostrar el gráfico en la aplicación
-    st.plotly_chart(fig)
+    # Verificar que haya datos suficientes para la regresión
+    if len(resultados) > 1:
+        # Calcular la recta de regresión
+        x = resultados['Volatilidad Anualizada']
+        y = resultados['Rendimiento del Periodo']
+        coef = np.polyfit(x, y, 1)
+        regresion_linea = np.poly1d(coef)
+
+        # Crear el scatter plot con Plotly
+        fig = px.scatter(resultados, 
+                         x='Volatilidad Anualizada', 
+                         y='Rendimiento del Periodo',
+                         text='Activos',
+                         title=f'Rendimiento del Periodo vs. Volatilidad Anualizada ({periodo})',
+                         labels={'Volatilidad Anualizada': 'Volatilidad Anualizada', 
+                                 'Rendimiento del Periodo': 'Rendimiento del Periodo'})
+
+        # Agregar la recta de regresión al gráfico
+        fig.add_trace(go.Scatter(x=x, y=regresion_linea(x), 
+                                 mode='lines', 
+                                 name='Recta de Regresión',
+                                 line=dict(color='red', dash='dash')))
+
+        # Ajustar el tamaño del texto de las etiquetas
+        fig.update_traces(textposition='top center', marker=dict(size=12, opacity=0.8))
+        fig.update_layout(autosize=False, width=800, height=600)
+
+        # Mostrar el gráfico en la aplicación
+        st.plotly_chart(fig)
+    else:
+        st.write("No hay suficientes datos válidos para generar el gráfico o la regresión.")
+
