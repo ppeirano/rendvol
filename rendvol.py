@@ -43,7 +43,7 @@ def obtener_fecha_inicio(periodo):
         return hoy - timedelta(days=365)  # Default to 1 year if none selected
 
 # Configurar la aplicación Streamlit
-st.title('Análisis de Rendimiento del Periodo y Volatilidad Anualizada con Recta de Regresión')
+st.title('Rendimiento y Volatilidad Anualizada')
 
 # Entrada de los tickers (por defecto se incluyen los activos solicitados)
 activos = st.text_input('Ingresa los tickers de los activos separados por comas', 
